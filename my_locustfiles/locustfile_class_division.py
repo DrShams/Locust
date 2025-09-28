@@ -53,17 +53,6 @@ def my_request_handler(request_type, name, response_time, response_length, respo
     if response_time > 1000:
         print("Время при обращении к эндпоинту " + name + " превысило 1 s")
 
-class BaseUser(HttpUser):
-    wait_time = constant_throughput(0.1)#задает время ожидания для каждого пользователя между транзакциями
-    abstract = True
-    def on_start(self):
-        '''метод вызывается для каждого пользователя перед тем как выйти на нагрузку'''
-        self.client.post("/login/", name= "/userlogin", json={"username":"alice","password":"123"})
-
-    def on_stop(self):
-        '''метод вызывается для каждого пользователя'''
-        self.client.post("/logout/", json={"username":"alice","password":"123"})
-
 class AdminUser(HttpUser):
     wait_time = constant_throughput(1)
     fixed_count = 1
@@ -119,7 +108,17 @@ class GRPCUser(User):
                 start_time=start_time,
                 url="localhost:50051"
             )
+class BaseUser(HttpUser):
+    wait_time = constant_throughput(0.1)#задает время ожидания для каждого пользователя между транзакциями
+    abstract = True
+    def on_start(self):
+        '''метод вызывается для каждого пользователя перед тем как выйти на нагрузку'''
+        self.client.post("/login/", name= "/userlogin", json={"username":"alice","password":"123"})
 
+    def on_stop(self):
+        '''метод вызывается для каждого пользователя'''
+        self.client.post("/logout/", json={"username":"alice","password":"123"})
+        
 class UserActionsSerfs(BaseUser):
     weight = 3
     @tag('users')
