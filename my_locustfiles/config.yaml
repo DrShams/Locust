@@ -1,0 +1,11 @@
+server_grpc:
+  host: host.docker.internal
+  port: 50051
+
+server_rest:
+  host: http://host.docker.internal
+  port: 8000
+
+influxdb:
+  host: influxdb
+  port: 8086

@@ -1,9 +1,28 @@
-from locust import HttpUser, User, TaskSet, task, constant_throughput, events, tag
+from locust import HttpUser, User, TaskSet, task, constant_throughput, events, tag, constant_pacing
 import grpc, time, sys, os
 from locust_influxdb_listener import InfluxDBListener, InfluxDBSettings
+import yaml
 
-grpc_folder = r"D:\\GitHub\\gRPC"
+# ===================
+# Load config
+# ===================
+config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+with open(config_path, "r") as f:
+    config = yaml.safe_load(f)
+
+GRPC_HOST = config['server_grpc']['host']
+GRPC_PORT = config['server_grpc']['port']
+
+REST_HOST = config['server_rest']['host']
+REST_PORT = config['server_rest']['port']
+
+INFLUX_HOST = config['influxdb']['host']
+INFLUX_PORT = config['influxdb']['port']
+
+#grpc_folder = r"D:\\GitHub\\gRPC"
+grpc_folder = "/mnt/protos/"
 sys.path.append(grpc_folder)
+
 import helloworld_pb2
 import helloworld_pb2_grpc
 
@@ -17,22 +36,19 @@ def on_locust_init(environment, **_kwargs):
     """
     # this settings matches the given docker-compose file
     influxDBSettings = InfluxDBSettings(
-        host = 'localhost',
-        port = 8086,
+        host = INFLUX_HOST,#localhost
+        port = INFLUX_PORT,
+        influx_host=INFLUX_HOST,#localhost
+        influx_port=INFLUX_PORT,
         user = 'myusername',
         pwd = 'passwordpasswordpassword',
         database = 'influxDatabase',
         interval_ms=1000
-        
-        # optional global tags to be added to each metric sent to influxdb
-        #additional_tags = {
-        #    'environment': 'test',
-        #    'some_other_tag': 'tag_value',
-        #}
     )
     # start listerner with the given configuration
     InfluxDBListener(env=environment, influxDbSettings=influxDBSettings)
-    
+    print(f"InfluxDBListener host: {influxDBSettings.host}")
+
 class UserTasks(TaskSet):
     wait_time = constant_throughput(0.1)
 
@@ -56,8 +72,6 @@ class PostTasks(TaskSet):
     @task(1)
     def stop(self):
         self.interrupt()
-
-
 # ===================
 # Основные пользователи
 # ===================
@@ -74,11 +88,9 @@ class BaseWebUser(HttpUser):
     def on_stop(self):
         headers = {"Authorization": f"Bearer {self.session_id}"}
         self.client.post("/logout/", headers=headers, json={"username": "alice", "password": "123"})
-        #headers = {"Authorization": f"Bearer {self.session_id}"}
-
 
 class AdminUser(HttpUser):
-    wait_time = constant_throughput(0.01)
+    wait_time = constant_pacing(1)
 
     @task
     @tag('admin')
@@ -86,8 +98,6 @@ class AdminUser(HttpUser):
         response = self.client.post("/login/", name="/adminlogin",
                          json={"username": "ruslan", "password": "123"})
         self.session_id = response.json().get("session_id")
-
-
 # ===================
 # gRPC User
 # ===================
@@ -96,7 +106,7 @@ class GRPCUser(User):
     wait_time = constant_throughput(1)
 
     def on_start(self):
-        self.channel = grpc.insecure_channel("localhost:50051")
+        self.channel = grpc.insecure_channel(f"{GRPC_HOST}:{GRPC_PORT}")
         self.stub = helloworld_pb2_grpc.GreeterStub(self.channel)
 
     def on_stop(self):
@@ -105,32 +115,25 @@ class GRPCUser(User):
     @task
     def say_hello(self):
         start_time = time.time()
+        response = None
+        exception = None  # <-- Инициализируем переменную заранее
         try:
             request = helloworld_pb2.HelloRequest(name="LocustUser")
             response = self.stub.SayHello(request)
+        except Exception as e:
+            exception = e
+        finally:
             total_time = (time.time() - start_time) * 1000
+            response_length = len(response.message) if response else 0
 
             events.request.fire(
                 request_type="GRPC",
                 name="SayHello",
                 response_time=total_time,
-                response_length=len(response.message),
+                response_length=response_length,
                 response=response,
                 context={},
-                exception=None,
+                exception=exception,
                 start_time=start_time,
-                url="localhost:50051"
-            )
-        except Exception as e:
-            total_time = (time.time() - start_time) * 1000
-            events.request.fire(
-                request_type="GRPC",
-                name="SayHello",
-                response_time=total_time,
-                response_length=0,
-                response=None,
-                context={},
-                exception=e,
-                start_time=start_time,
-                url="localhost:50051"
+                url=f"{GRPC_HOST}:{GRPC_PORT}"
             )
