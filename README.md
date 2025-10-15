@@ -94,3 +94,11 @@
 - `--exclude-tags` для исключения  
 
 ---
+
+Отправка в DockerImage
+```commandline
+docker build -t ruslanshamsnet/my-package:1.0.0 .
+docker login
+docker push ruslanshamsnet/my-package:1.0.0
+```
+

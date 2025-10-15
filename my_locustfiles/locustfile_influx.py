@@ -2,6 +2,7 @@ from locust import HttpUser, User, TaskSet, task, constant_throughput, events, t
 import grpc, time, sys, os
 from locust_influxdb_listener import InfluxDBListener, InfluxDBSettings
 import yaml
+import platform
 
 # ===================
 # Load config
@@ -19,8 +20,12 @@ REST_PORT = config['server_rest']['port']
 INFLUX_HOST = config['influxdb']['host']
 INFLUX_PORT = config['influxdb']['port']
 
-#grpc_folder = r"D:\\GitHub\\gRPC"
-grpc_folder = "/mnt/protos/"
+grpc_folder = 'None'
+if platform.system() == "Windows":
+    grpc_folder = r"D:\GitHub\gRPC"
+else:  # Linux, macOS, etc.
+    grpc_folder = "/mnt/protos/"
+print(f"Current grpc_folder {grpc_folder}")
 sys.path.append(grpc_folder)
 
 import helloworld_pb2
@@ -43,7 +48,7 @@ def on_locust_init(environment, **_kwargs):
         user = 'myusername',
         pwd = 'passwordpasswordpassword',
         database = 'influxDatabase',
-        interval_ms=1000
+        interval_ms=100
     )
     # start listerner with the given configuration
     InfluxDBListener(env=environment, influxDbSettings=influxDBSettings)

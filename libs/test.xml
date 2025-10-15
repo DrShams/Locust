@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<Configuration>
+    <Database>
+        <Host>{{test}}</Host>
+        <Port>5432</Port>
+        <Username>admin</Username>
+        <Password>secret</Password>
+    </Database>
+    <Server>
+        <Host>0.0.0.0</Host>
+        <Port>8080</Port>
+        <Logging>
+            <Level>DEBUG</Level>
+            <File>server.log</File>
+            <File2> </File2>
+        </Logging>
+    </Server>
+</Configuration>
