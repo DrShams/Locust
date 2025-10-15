@@ -56,5 +56,5 @@ class XmlTemplate(object):
         # Провести замену для перечня значений
         self.set_param_value(root, values)
 
-        # Записать в
+        # Записать в мутируемый объект
         return tree
