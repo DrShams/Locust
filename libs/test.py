@@ -1,13 +1,16 @@
 from xml_template import XmlTemplate
 import xml.etree.ElementTree as ET
 
-# Load and parse the XML file
+# Загрузим файл как образец
 tree = ET.parse("test.xml")
 root = tree.getroot()
 
 xml = XmlTemplate()
+
+#Выведем все пути
 xml.print_param_paths(root)
 
+#Заменим параметры по определенным путям XML
 values = {
     "Configuration/Database/Host": "localhost",
     "Configuration/Database/Port": "7644",
